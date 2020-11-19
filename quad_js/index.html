@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>QuadTree</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.1/css/bulma.min.css">
+    <style>
+        .section {
+            margin: 10px;
+            padding: 0;
+        }
+
+        .main .columns {
+            height: 600px;
+        }
+
+        .main .column {
+            border: 1px solid black;
+            height: 100%;
+        }
+
+        .main .column.middle {
+            border-left: none;
+        }
+
+        .node circle {
+            fill: #fff;
+            stroke: steelblue;
+            stroke-width: 1px;
+        }
+
+        .node text {
+            font: 7px sans-serif;
+        }
+
+        .link {
+            fill: none;
+            stroke: #ccc;
+            stroke-width: 2px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <section class="section" style="width: 70%; margin: auto;">
+        <div class="container has-text-centered">
+            <h1 class="title is-3">Quad Tree</h1>
+            <div class="columns">
+                <div class="column" style="margin-right: 30px;">
+                    <h1 class="title is-5">Inital Box</h1>
+                    <div class="field is-horizontal">
+                        <div class="field-label is-normal">
+                            <label class="label">Center</label>
+                        </div>
+                        <div class="field-body">
+                            <div class="field">
+                                <p class="control">
+                                    <input id="center_x" class="input" type="number" step="any" placeholder="X">
+                                </p>
+                            </div>
+                            <div class="field">
+                                <p class="control ">
+                                    <input class="input" id="center_y" type="number" step="any" placeholder="Y">
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="columns">
+                        <div class="column">
+                            <div class="field is-horizontal">
+                                <div class="field-body">
+                                    <div class="field">
+                                        <p class="control">
+                                            <input id="center_hd" class="input" type="number" step="any"
+                                                placeholder="Half Dimension">
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-2">
+
+                            <button id="init_box_button" class="button is-success is-rounded">Create</button>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="column">
+                    <h1 class="title is-5">Add Point</h1>
+                    <div class="columns">
+                        <div class="column">
+                            <div class="field">
+                                <div class="control">
+                                    <input id="point_x" type="number" step="any" placeholder="X" class="input"
+                                        id="point_x">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="field">
+                                <div class="control">
+                                    <input id="point_y" type="number" step="any" placeholder="Y" class="input"
+                                        id="point_y">
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="field is-grouped">
+                        <div class="control">
+                            <button id="add_point_button" class="button is-success is-rounded" disabled>Add</button>
+                        </div>
+                        <div class="control">
+                            <button id="add_point_rand_button" class="button is-success is-rounded" disabled>Add
+                                Random</button>
+                        </div>
+                        <div class="control">
+                            <button id="add_point_rand_10_button" class="button is-success is-rounded" disabled>Add 10
+                                Random</button>
+                        </div>
+                    </div>
+
+                    <div class="field is-grouped is-grouped-right">
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section main">
+        <div class="columns">
+            <div class="column" id="tree_canvas">
+
+            </div>
+            <div id="myCanvas" class="column middle">
+
+            </div>
+        </div>
+    </section>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+        integrity="sha256-4+XzXVhsDmqanXGHaHvgh1gMQKX40OUvDEBTu8JcmNs=" crossorigin="anonymous"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/3.0.16/svg.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
+
+
+    <script>
+        function add_tree(tData) {
+
+            var treeData = JSON.parse(JSON.stringify(tData));
+
+            $("#tree_canvas").empty();
+
+            // ************** Generate the tree diagram	 *****************
+            var margin = {
+                    top: 40,
+                    right: 120,
+                    bottom: 20,
+                    left: 120
+                },
+                width = 660 - margin.right - margin.left,
+                height = 500 - margin.top - margin.bottom;
+
+            var i = 0;
+
+            var tree = d3.layout.tree()
+                .size([height, width]);
+
+            var diagonal = d3.svg.diagonal()
+                .projection(function (d) {
+                    return [d.x, d.y];
+                });
+
+            var svg = d3.select("#tree_canvas").append("svg")
+                .attr("width", width + margin.right + margin.left)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            root = treeData[0];
+
+            update(root);
+
+            function update(source) {
+
+                // Compute the new tree layout.
+                var nodes = tree.nodes(root).reverse(),
+                    links = tree.links(nodes);
+
+                // Normalize for fixed-depth.
+                nodes.forEach(function (d) {
+                    d.y = d.depth * 100;
+                });
+
+                // Declare the nodes…
+                var node = svg.selectAll("g.node")
+                    .data(nodes, function (d) {
+                        return d.id || (d.id = ++i);
+                    });
+
+                // Enter the nodes.
+                var nodeEnter = node.enter().append("g")
+                    .attr("class", "node")
+                    .attr("transform", function (d) {
+                        return "translate(" + d.x + "," + d.y + ")";
+                    });
+
+                nodeEnter.append("circle")
+                    .attr("r", 10)
+                    .style("fill", "#fff");
+
+                nodeEnter.append("text")
+                    .attr("y", function (d) {
+                        return d.children || d._children ? -18 : 18;
+                    })
+                    .attr("dy", ".35em")
+                    .attr("text-anchor", "middle")
+                    .text(function (d) {
+                        return d.name;
+                    })
+                    .style("fill-opacity", 1);
+
+                // Declare the links…
+                var link = svg.selectAll("path.link")
+                    .data(links, function (d) {
+                        return d.target.id;
+                    });
+
+                // Enter the links.
+                link.enter().insert("path", "g")
+                    .attr("class", "link")
+                    .attr("d", diagonal);
+            }
+
+        }
+
+
+        $(function () {
+            const width = 720;
+            const height = 570;
+
+            const origin_x = width / 2;
+            const origin_y = height / 2;
+
+            var draw = SVG().addTo('#myCanvas').size(width, height)
+            var rect = draw.rect(width, height).attr({
+                fill: '#000000'
+            })
+            var circle = draw.circle(5).attr({
+                fill: '#aaaaaaaa'
+            }).move(origin_x, origin_y);
+            var text = draw.text('(0, 0)')
+            text.move(origin_x + 5, origin_y + 5).font({
+                fill: '#aaaaaaaa',
+                family: 'Monospace',
+                size: 7
+            });
+
+
+            const QT_NODE_CAPACITY = 2;
+
+            const tree_data = [];
+
+            class Point {
+                constructor(x, y) {
+                    this.x = x;
+                    this.y = y;
+                }
+            }
+
+            class AABB {
+                constructor(center, halfDimension) {
+                    this.center = center;
+                    this.halfDimension = halfDimension;
+                }
+
+                contains(point) {
+                    if (point.x < this.center.x - this.halfDimension || point.x > this.center.x + this
+                        .halfDimension) {
+                        return false;
+                    }
+
+                    if (point.y < this.center.y - this.halfDimension || point.y > this.center.y + this
+                        .halfDimension) {
+                        return false;
+                    }
+
+                    return true;
+                }
+
+                intersects(other) {
+                    var self = this;
+                    if (self.center.x + self.halfDimension > other.center.x - other.halfDimension) {
+                        return true;
+                    }
+
+                    if (self.center.x - self.halfDimension < other.center.x + other.halfDimension) {
+                        return true;
+                    }
+
+                    if (self.center.y + self.halfDimension > other.center.y - other.halfDimension) {
+                        return true;
+                    }
+
+                    if (self.center.y - self.halfDimension < other.center.y + other.halfDimension) {
+                        return true;
+                    }
+                    return false;
+                }
+            }
+
+            class QuadTree {
+                constructor(boundry) {
+                    this.boundry = boundry;
+
+                    var rect = draw.rect(this.boundry.halfDimension * 2, this.boundry.halfDimension * 2)
+                        .attr({
+                            fill: '#00000000',
+                            stroke: '#ff0000'
+                        }).move(origin_x + this.boundry.center.x - this.boundry.halfDimension, origin_y +
+                            this.boundry.center.y - this.boundry.halfDimension);
+
+                    this.points = [];
+
+                    this.NW = null;
+                    this.NE = null;
+                    this.SE = null;
+                    this.SW = null;
+                }
+
+                subdivide() {
+                    var halfDim = this.boundry.halfDimension / 2;
+
+                    this.NW = new QuadTree(new AABB(new Point(this.boundry.center.x - halfDim, this.boundry
+                        .center.y + halfDim), halfDim))
+                    this.NE = new QuadTree(new AABB(new Point(this.boundry.center.x + halfDim, this.boundry
+                        .center.y + halfDim), halfDim))
+                    this.SW = new QuadTree(new AABB(new Point(this.boundry.center.x - halfDim, this.boundry
+                        .center.y - halfDim), halfDim))
+                    this.SE = new QuadTree(new AABB(new Point(this.boundry.center.x + halfDim, this.boundry
+                        .center.y - halfDim), halfDim))
+                }
+
+                insert(point) {
+                    if (!this.boundry.contains(point)) {
+                        return false;
+                    }
+
+                    if (this.points.length < QT_NODE_CAPACITY && this.NW == null) {
+                        this.points.push(point);
+                        var circle = draw.circle(5).attr({
+                            fill: '#00ff00'
+                        }).move(origin_x + point.x, origin_y + point.y);
+                        var text = draw.text('(' + point.x + ', ' + point.y + ')');
+                        text.move(origin_x + point.x + 5, origin_y + point.y + 5).font({
+                            fill: '#00ff00aa',
+                            family: 'Monospace',
+                            size: 7
+                        });
+                        return true;
+                    }
+
+                    if (this.NW == null) {
+                        this.subdivide();
+                    }
+
+                    if (this.NW.insert(point)) return true;
+                    if (this.NE.insert(point)) return true;
+                    if (this.SW.insert(point)) return true;
+                    if (this.SE.insert(point)) return true;
+
+                    return false;
+                }
+            }
+
+            var qt = null;
+
+            $("#init_box_button").on('click', function () {
+                var center_x = $("#center_x").val();
+                var center_y = $("#center_y").val();
+
+                if (center_x.length == 0 || center_y.length == 0 || isNaN(center_x) || isNaN(
+                        center_y)) {
+                    alert("Empty Center");
+                    return;
+                }
+                var half_dim = $("#center_hd").val();
+                if (half_dim.length == 0 || isNaN(half_dim)) {
+                    alert("Empty Half Dim");
+                    return;
+                }
+
+                $(this).attr('disabled', true);
+                $("#add_point_button").attr('disabled', false);
+                $("#add_point_rand_button").attr('disabled', false);
+                $("#add_point_rand_10_button").attr('disabled', false);
+
+
+                qt = new QuadTree(new AABB(new Point(parseFloat(center_x), parseFloat(center_y)),
+                    parseFloat(half_dim)));
+
+                if (tree_data.length == 0) {
+                    tree_data.push({
+                        name: "Root",
+                        children: []
+                    });
+                    add_tree(tree_data);
+                }
+
+            });
+
+            $("#add_point_button").on('click', function () {
+                var point_x = $("#point_x").val();
+                var point_y = $("#point_y").val();
+                $("#point_x").val('');
+                $("#point_y").val('');
+                if (point_x.length == 0 || point_y == 0 || isNaN(point_x) || isNaN(point_y)) {
+                    alert("Empty point");
+                    return;
+                }
+                if (!qt.insert(new Point(parseFloat(point_x), parseFloat(point_y)))) {
+                    alert("Point outside boundry");
+                } else {
+
+                    function tree_traverse(td, q) {
+                        if (td.children.length == 0) {
+                            if (q.NW != null) {
+                                td.children.push({
+                                    name: "NW",
+                                    children: []
+                                });
+                                td.children.push({
+                                    name: "NE",
+                                    children: []
+                                });
+                                td.children.push({
+                                    name: "SW",
+                                    children: []
+                                });
+                                td.children.push({
+                                    name: "SE",
+                                    children: []
+                                });
+                            }
+                        } else {
+                            tree_traverse(td.children[0], q.NW);
+                            tree_traverse(td.children[1], q.NE);
+                            tree_traverse(td.children[2], q.SW);
+                            tree_traverse(td.children[3], q.SE);
+                        }
+                    }
+
+                    tree_traverse(tree_data[0], qt);
+                    add_tree(tree_data);
+                }
+            });
+
+            $("#add_point_rand_button").on('click', function () {
+                var halfDimension = qt.boundry.halfDimension;
+                var min = qt.boundry.center.x - halfDimension;
+                var max = qt.boundry.center.x + halfDimension;
+
+                var point_x = Math.floor(Math.random() * (max - min) + min);
+                var point_y = Math.floor(Math.random() * (max - min) + min);
+
+                if (!qt.insert(new Point(point_x, point_y))) {
+                    alert("Point outside boundry");
+                } else {
+                    function tree_traverse(td, q) {
+                        if (td.children.length == 0) {
+                            if (q.NW != null) {
+                                td.children.push({
+                                    name: "NW",
+                                    children: []
+                                });
+                                td.children.push({
+                                    name: "NE",
+                                    children: []
+                                });
+                                td.children.push({
+                                    name: "SW",
+                                    children: []
+                                });
+                                td.children.push({
+                                    name: "SE",
+                                    children: []
+                                });
+                            }
+                        } else {
+                            tree_traverse(td.children[0], q.NW);
+                            tree_traverse(td.children[1], q.NE);
+                            tree_traverse(td.children[2], q.SW);
+                            tree_traverse(td.children[3], q.SE);
+                        }
+                    }
+
+                    tree_traverse(tree_data[0], qt);
+                    add_tree(tree_data);
+                }
+            });
+
+            $("#add_point_rand_10_button").on('click', function () {
+
+                for (let index = 0; index < 10; index++) {
+                    var halfDimension = qt.boundry.halfDimension;
+                    var min = qt.boundry.center.x - halfDimension;
+                    var max = qt.boundry.center.x + halfDimension;
+
+                    var point_x = Math.floor(Math.random() * (max - min) + min);
+                    var point_y = Math.floor(Math.random() * (max - min) + min);
+
+
+                    if (!qt.insert(new Point(point_x, point_y))) {
+                        alert("Point outside boundry");
+                    } else {
+                        function tree_traverse(td, q) {
+                            if (td.children.length == 0) {
+                                if (q.NW != null) {
+                                    td.children.push({
+                                        name: "NW",
+                                        children: []
+                                    });
+                                    td.children.push({
+                                        name: "NE",
+                                        children: []
+                                    });
+                                    td.children.push({
+                                        name: "SW",
+                                        children: []
+                                    });
+                                    td.children.push({
+                                        name: "SE",
+                                        children: []
+                                    });
+                                }
+                            } else {
+                                tree_traverse(td.children[0], q.NW);
+                                tree_traverse(td.children[1], q.NE);
+                                tree_traverse(td.children[2], q.SW);
+                                tree_traverse(td.children[3], q.SE);
+                            }
+                        }
+
+                        tree_traverse(tree_data[0], qt);
+                        add_tree(tree_data);
+                    }
+                }
+
+            });
+
+        });
+    </script>
+</body>
+
+</html>
