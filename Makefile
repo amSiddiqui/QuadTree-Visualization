@@ -1,5 +1,5 @@
 quadtree: quadtree.c
-	gcc -Wall quadtree.c -o quadtree
+	gcc -Wall -lSDL2 quadtree.c -o QT
 
 clean: quadtree
 	rm quadtree
