@@ -1,8 +1,5 @@
 # Quad Tree
-A Quad Tree Visualization program and C program.
+Forked from https://github.com/TheKeySpammer/QuadTree-Visualization
 
-### Run C Program
-After cloning repository cd into direcotry and make using `make quadtree` and run the program using ./quadtree
+Implemented the drawing stuff in SDL because I don't like JS.
 
-### Visualization
-Open the index.html file inside quad_js direcotry in your browser.
